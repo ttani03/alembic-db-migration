@@ -1,0 +1,61 @@
+name: Generate Migration File
+
+env:
+  MYSQL_DATABASE: test_db
+  MYSQL_USER: user01
+  MYSQL_PASSWORD: password
+  MYSQL_HOST: localhost
+  BACKEND_PATH: backend
+  ALEMBIC_PATH: backend/db
+
+on:
+  workflow_dispatch:
+
+jobs:
+  generate-migrations:
+    runs-on: ubuntu-latest
+    
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_DATABASE: ${{ env.DB_NAME }}
+          MYSQL_USER: ${{ env.DB_USER_NAME }}
+          MYSQL_PASSWORD: ${{ env.DB_PASSWORD }}
+          MYSQL_ROOT_PASSWORD: ${{ env.DB_PASSWORD }}
+        ports:
+          - 3306:3306
+        options: --health-cmd="mysqladmin ping" --health-interval=10s --health-timeout=5s --health-retries=3
+    
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install poetry
+        run: pipx install poetry
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version-file: '${{ env.BACKEND_PATH }}/.python-version'
+          cache: 'poetry'
+
+      - name: Install dependencies
+        working-directory: ${{ env.BACKEND_PATH }}
+        run: |
+          poetry env use $(cat .python-version)
+          poetry install --no-interaction
+
+      - name: Upgrade database to the current version
+        working-directory: ${{ env.ALEMBIC_PATH }}
+        run: |
+          # データベースを最新の状態に更新
+          alembic upgrade head
+
+      # - name: Generate migration file
+      #   working-directory: ${{ env.ALEMBIC_PATH }}
+      #   run: |
+      #     # 手動で指定されたメッセージまたはデフォルトメッセージを使用
+      #     MESSAGE="Auto-generated migration by github action at ($(date +%Y%m%d%H%M%S))"
+
+      #     # Alembicを使用してマイグレーションファイルを作成
+      #     alembic revision --autogenerate -m "$MESSAGE"
