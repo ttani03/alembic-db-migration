@@ -48,8 +48,7 @@ jobs:
       - name: Upgrade database to the current version
         working-directory: ${{ env.ALEMBIC_PATH }}
         run: |
-          # データベースを最新の状態に更新
-          alembic upgrade head
+          poetry run alembic upgrade head
 
       # - name: Generate migration file
       #   working-directory: ${{ env.ALEMBIC_PATH }}
