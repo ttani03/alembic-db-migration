@@ -31,39 +31,51 @@ jobs:
         options: --health-cmd="mysqladmin ping" --health-interval=10s --health-timeout=5s --health-retries=3
     
     steps:
-      - uses: actions/checkout@v4
-
-      - name: Install poetry
-        run: pipx install poetry
-
-      - name: Set up Python
-        uses: actions/setup-python@v5
+      - name: Fetch Base Branch Latest Commit
+        uses: actions/checkout@v3
         with:
-          python-version-file: '${{ env.BACKEND_PATH }}/.python-version'
-          cache: 'poetry'
+          ref: ${{ github.event.pull_request.head.ref }}
 
-      - name: Install dependencies
-        working-directory: ${{ env.BACKEND_PATH }}
-        run: |
-          poetry env use $(cat .python-version)
-          poetry install --no-interaction
+      - name: Fetch PR Branch Latest Commit
+        uses: actions/checkout@v4
 
-      - name: Upgrade database to the current version
-        working-directory: ${{ env.ALEMBIC_PATH }}
-        run: |
-          poetry run alembic upgrade head
+      - name: Notice diff files
+        id: skip-test
+        run: |-
+          diff=$(git diff --name-only origin/${{ github.event.pull_request.head.ref }}..${{ github.sha }})
+          echo "::notice diff: $diff"
 
-      - name: Generate migration file
-        working-directory: ${{ env.ALEMBIC_PATH }}
-        run: |
-          poetry run alembic revision --autogenerate -m "Auto-generated migration by github action at ($(date +%Y%m%d%H%M%S))"
+      # - name: Install poetry
+      #   run: pipx install poetry
 
-      - name: commit and push migration file on success
-        working-directory: ${{ env.ALEMBIC_PATH }}
-        if: success()
-        run: |
-          git config --global user.email "action@github.com"
-          git config --global user.name "GitHub Action"
-          git add migrations/versions/*.py
-          git commit -m "Auto-generated migration by github action at ($(date +%Y%m%d%H%M%S)) from ci"
-          git push
+      # - name: Set up Python
+      #   uses: actions/setup-python@v5
+      #   with:
+      #     python-version-file: '${{ env.BACKEND_PATH }}/.python-version'
+      #     cache: 'poetry'
+
+      # - name: Install dependencies
+      #   working-directory: ${{ env.BACKEND_PATH }}
+      #   run: |
+      #     poetry env use $(cat .python-version)
+      #     poetry install --no-interaction
+
+      # - name: Upgrade database to the current version
+      #   working-directory: ${{ env.ALEMBIC_PATH }}
+      #   run: |
+      #     poetry run alembic upgrade head
+
+      # - name: Generate migration file
+      #   working-directory: ${{ env.ALEMBIC_PATH }}
+      #   run: |
+      #     poetry run alembic revision --autogenerate -m "Auto-generated migration by github action at ($(date +%Y%m%d%H%M%S))"
+
+      # - name: commit and push migration file on success
+      #   working-directory: ${{ env.ALEMBIC_PATH }}
+      #   if: success()
+      #   run: |
+      #     git config --global user.email "action@github.com"
+      #     git config --global user.name "GitHub Action"
+      #     git add migrations/versions/*.py
+      #     git commit -m "Auto-generated migration by github action at ($(date +%Y%m%d%H%M%S)) from ci"
+      #     git push
