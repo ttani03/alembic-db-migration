@@ -34,16 +34,12 @@ jobs:
       - name: Fetch Base Branch Latest Commit
         uses: actions/checkout@v4
         with:
-          ref: ${{ github.event.pull_request.base.ref }}
-          fetch-depth: 1
-
-      - name: Fetch PR Branch Latest Commit
-        uses: actions/checkout@v4
+          fetch-depth: 0
 
       - name: Notice diff files
         id: skip-test
         run: |-
-          diff=$(git diff --name-only origin/${{ github.event.pull_request.base.ref }}..${{ github.sha }})
+          diff=$(git diff --name-only origin/${{ github.event.pull_request.head.ref }}..${{ github.sha }})
           echo "::notice diff: $diff"
 
       # - name: Install poetry
