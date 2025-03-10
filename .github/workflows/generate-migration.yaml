@@ -18,23 +18,24 @@ jobs:
   generate-migrations:
     runs-on: ubuntu-latest
     
-    services:
-      mysql:
-        image: mysql:8.0
-        env:
-          MYSQL_DATABASE: ${{ env.MYSQL_DATABASE }}
-          MYSQL_USER: ${{ env.MYSQL_USER }}
-          MYSQL_PASSWORD: ${{ env.MYSQL_PASSWORD }}
-          MYSQL_ROOT_PASSWORD: ${{ env.MYSQL_PASSWORD }}
-        ports:
-          - 3306:3306
-        options: --health-cmd="mysqladmin ping" --health-interval=10s --health-timeout=5s --health-retries=3
+    # services:
+    #   mysql:
+    #     image: mysql:8.0
+    #     env:
+    #       MYSQL_DATABASE: ${{ env.MYSQL_DATABASE }}
+    #       MYSQL_USER: ${{ env.MYSQL_USER }}
+    #       MYSQL_PASSWORD: ${{ env.MYSQL_PASSWORD }}
+    #       MYSQL_ROOT_PASSWORD: ${{ env.MYSQL_PASSWORD }}
+    #     ports:
+    #       - 3306:3306
+    #     options: --health-cmd="mysqladmin ping" --health-interval=10s --health-timeout=5s --health-retries=3
     
     steps:
       - name: Fetch Base Branch Latest Commit
         uses: actions/checkout@v3
         with:
           ref: ${{ github.event.pull_request.head.ref }}
+          fetch-depth: 1
 
       - name: Fetch PR Branch Latest Commit
         uses: actions/checkout@v4
