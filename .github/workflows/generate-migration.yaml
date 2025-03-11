@@ -89,6 +89,12 @@ jobs:
             echo "schema_changed=false" > $GITHUB_OUTPUT
           fi
 
+      - name: Test migration file
+        working-directory: ${{ env.ALEMBIC_PATH }}
+        if: steps.generate-migration.outputs.schema_changed == 'true'
+        run: |
+          poetry run alembic upgrade head
+
       - name: commit and push new migration file on success
         working-directory: ${{ env.ALEMBIC_PATH }}
         if: steps.generate-migration.outputs.schema_changed == 'true'
