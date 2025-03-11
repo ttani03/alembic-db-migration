@@ -12,7 +12,6 @@ on:
   workflow_dispatch:
   pull_request:
     branches:
-      - main
       - feature/*
     types:
       - opened
@@ -27,77 +26,73 @@ jobs:
   generate-migrations:
     runs-on: ubuntu-latest
     
-    # services:
-    #   mysql:
-    #     image: mysql:8.0
-    #     env:
-    #       MYSQL_DATABASE: ${{ env.MYSQL_DATABASE }}
-    #       MYSQL_USER: ${{ env.MYSQL_USER }}
-    #       MYSQL_PASSWORD: ${{ env.MYSQL_PASSWORD }}
-    #       MYSQL_ROOT_PASSWORD: ${{ env.MYSQL_PASSWORD }}
-    #     ports:
-    #       - 3306:3306
-    #     options: --health-cmd="mysqladmin ping" --health-interval=10s --health-timeout=5s --health-retries=3
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_DATABASE: ${{ env.MYSQL_DATABASE }}
+          MYSQL_USER: ${{ env.MYSQL_USER }}
+          MYSQL_PASSWORD: ${{ env.MYSQL_PASSWORD }}
+          MYSQL_ROOT_PASSWORD: ${{ env.MYSQL_PASSWORD }}
+        ports:
+          - 3306:3306
+        options: --health-cmd="mysqladmin ping" --health-interval=10s --health-timeout=5s --health-retries=3
     
     steps:
       - name: Fetch Base Branch Latest Commit
         uses: actions/checkout@v4
 
-      - name: Check change-files in backend/models
-        id: changed-files
-        uses: tj-actions/changed-files@v45
+      - name: Install poetry
+        run: pipx install poetry
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
         with:
-          files: 'backend/models/*.py'
+          python-version-file: '${{ env.BACKEND_PATH }}/.python-version'
+          cache: 'poetry'
 
-      - name: List all changed files
-        if: steps.changed-files.outputs.any_changed == 'true'
-        env:
-          ALL_CHANGED_FILES: ${{ steps.changed-files.outputs.all_changed_files }}
+      - name: Install dependencies
+        working-directory: ${{ env.BACKEND_PATH }}
         run: |
-          for file in ${ALL_CHANGED_FILES}; do
-            echo "$file was changed"
-          done
+          poetry env use $(cat .python-version)
+          poetry install --no-interaction
 
-      # - name: Notice diff files
-      #   id: skip-test
-      #   run: |
-      #     MERGE_BASE_SHA=$(git rev-list -1 $GITHUB_REF)
-      #     echo "MERGE_BASE_SHA $MERGE_BASE_SHA"
-      #     echo "GITHUB_SHA: $GITHUB_SHA"
-      #     CHANGE_FILES=$(git diff --name-only $MERGE_BASE_SHA $GITHUB_SHA)
-      #     echo "Changed files: $CHANGED_FILES"
+      - name: Upgrade database to the current version
+        working-directory: ${{ env.ALEMBIC_PATH }}
+        run: |
+          poetry run alembic upgrade head
 
-      # - name: Install poetry
-      #   run: pipx install poetry
+      - name: Generate migration file
+        working-directory: ${{ env.ALEMBIC_PATH }}
+        id: generate-migration
+        run: |
+          CURRENT_TIME=$(date +%s)
+          poetry run alembic revision --autogenerate -m "auto-generated-migration-$CURRENT_TIME"
+          NEW_MIGRATION_FILE=$(find migrations/versions -type f -name "*.py" -exec grep -l "$CURRENT_TIME" {} \; | head -n 1)
+          
+          if [ -z "$NEW_MIGRATION_FILE" ]; then
+            echo "Failed to generate migration file"
+            exit 1
+          fi
 
-      # - name: Set up Python
-      #   uses: actions/setup-python@v5
-      #   with:
-      #     python-version-file: '${{ env.BACKEND_PATH }}/.python-version'
-      #     cache: 'poetry'
+          echo "New migration file: $NEW_MIGRATION_FILE"
 
-      # - name: Install dependencies
-      #   working-directory: ${{ env.BACKEND_PATH }}
-      #   run: |
-      #     poetry env use $(cat .python-version)
-      #     poetry install --no-interaction
+          if grep -q "op\." "$NEW_MIGRATION_FILE"; then
+            echo "Schema differences detected between models and the current DB schema:"
+            grep "op\." "$MIGRATION_FILE"
+            echo "schema_changed=true" > $GITHUB_OUTPUT
+          else
+            echo "No schema changes detected; removing the generated migration file."
+            rm -f "$NEW_MIGRATION_FILE"
+            echo "schema_changed=false" > $GITHUB_OUTPUT
+          fi
 
-      # - name: Upgrade database to the current version
-      #   working-directory: ${{ env.ALEMBIC_PATH }}
-      #   run: |
-      #     poetry run alembic upgrade head
-
-      # - name: Generate migration file
-      #   working-directory: ${{ env.ALEMBIC_PATH }}
-      #   run: |
-      #     poetry run alembic revision --autogenerate -m "Auto-generated migration by github action at ($(date +%Y%m%d%H%M%S))"
-
-      # - name: commit and push migration file on success
-      #   working-directory: ${{ env.ALEMBIC_PATH }}
-      #   if: success()
-      #   run: |
-      #     git config --global user.email "action@github.com"
-      #     git config --global user.name "GitHub Action"
-      #     git add migrations/versions/*.py
-      #     git commit -m "Auto-generated migration by github action at ($(date +%Y%m%d%H%M%S)) from ci"
-      #     git push
+      - name: commit and push new migration file on success
+        working-directory: ${{ env.ALEMBIC_PATH }}
+        if: steps.generate-migration.outputs.schema_changed == 'true'
+        run: |
+          git config --global user.email "action@github.com"
+          git config --global user.name "GitHub Action"
+          git add migrations/versions/*.py
+          git commit -m "Auto-generated migration by github action at ($(date +%Y%m%d%H%M%S)) from ci"
+          git push
