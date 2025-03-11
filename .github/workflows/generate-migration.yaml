@@ -31,23 +31,30 @@ jobs:
     #     options: --health-cmd="mysqladmin ping" --health-interval=10s --health-timeout=5s --health-retries=3
     
     steps:
-      - name: Fetch Base Branch Latest Commit
-        uses: actions/checkout@v4
-        with:
-          ref: $GITHUB_REF
-          fetch-depth: 1
+      - run: |
+          echo '1' $GITHUB_REF
+          echo '2' ${{ github.ref }}
+          echo '3' ${{ github.ref_name }}
+          echo '4' ${{ github.head_ref }}
+          echo '5' ${{ github.base_ref }}
 
-      - name: Fetch Base Branch Latest Commit
-        uses: actions/checkout@v4
+      # - name: Fetch Base Branch Latest Commit
+      #   uses: actions/checkout@v4
+      #   with:
+      #     ref: ${{ github.head_ref }}	
+      #     fetch-depth: 1
 
-      - name: Notice diff files
-        id: skip-test
-        run: |
-          MERGE_BASE_SHA=$(git rev-list -1 $GITHUB_REF)
-          echo "MERGE_BASE_SHA $MERGE_BASE_SHA"
-          echo "GITHUB_SHA: $GITHUB_SHA"
-          CHANGE_FILES=$(git diff --name-only $MERGE_BASE_SHA $GITHUB_SHA)
-          echo "Changed files: $CHANGED_FILES"
+      # - name: Fetch Base Branch Latest Commit
+      #   uses: actions/checkout@v4
+
+      # - name: Notice diff files
+      #   id: skip-test
+      #   run: |
+      #     MERGE_BASE_SHA=$(git rev-list -1 $GITHUB_REF)
+      #     echo "MERGE_BASE_SHA $MERGE_BASE_SHA"
+      #     echo "GITHUB_SHA: $GITHUB_SHA"
+      #     CHANGE_FILES=$(git diff --name-only $MERGE_BASE_SHA $GITHUB_SHA)
+      #     echo "Changed files: $CHANGED_FILES"
 
       # - name: Install poetry
       #   run: pipx install poetry
