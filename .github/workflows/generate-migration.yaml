@@ -40,23 +40,23 @@ jobs:
     #     options: --health-cmd="mysqladmin ping" --health-interval=10s --health-timeout=5s --health-retries=3
     
     steps:
-      - run: |
-          echo '1' $GITHUB_REF
-          echo '2' ${{ github.ref }}
-          echo '3' ${{ github.ref_name }}
-          echo '4' ${{ github.head_ref }}
-          echo '5' ${{ github.base_ref }}
-          echo '6' ${{ github.event.pull_request.base.sha }}
-          echo '7' ${{ github.event.pull_request.head.sha }}
+      - name: Fetch Base Branch Latest Commit
+        uses: actions/checkout@v4
 
-      # - name: Fetch Base Branch Latest Commit
-      #   uses: actions/checkout@v4
-      #   with:
-      #     ref: ${{ github.head_ref }}
-      #     fetch-depth: 1
+      - name: Check change-files in backend/models
+        id: changed-files
+        uses: tj-actions/changed-files@v45
+        with:
+          files: 'backend/models/*.py'
 
-      # - name: Fetch Base Branch Latest Commit
-      #   uses: actions/checkout@v4
+      - name: List all changed files
+        if: steps.changed-files.outputs.any_changed == 'true'
+        env:
+          ALL_CHANGED_FILES: ${{ steps.changed-files.outputs.all_changed_files }}
+        run: |
+          for file in ${ALL_CHANGED_FILES}; do
+            echo "$file was changed"
+          done
 
       # - name: Notice diff files
       #   id: skip-test
