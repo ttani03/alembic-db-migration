@@ -10,6 +10,14 @@ env:
 
 on:
   workflow_dispatch:
+  pull_request:
+    branches:
+      - main
+    types:
+      - opened
+      - synchronize
+      - reopened
+      - ready_for_review
 
 permissions:
   contents: write
@@ -31,7 +39,10 @@ jobs:
         options: --health-cmd="mysqladmin ping" --health-interval=10s --health-timeout=5s --health-retries=3
     
     steps:
-      - uses: actions/checkout@v4
+      - name: Fetch Base Branch Latest Commit
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.ref }}
 
       - name: Install poetry
         run: pipx install poetry
@@ -55,14 +66,41 @@ jobs:
 
       - name: Generate migration file
         working-directory: ${{ env.ALEMBIC_PATH }}
+        id: generate-migration
         run: |
-          poetry run alembic revision --autogenerate -m "Auto-generated migration by github action at ($(date +%Y%m%d%H%M%S))"
+          CURRENT_TIME=$(date +%s)
+          poetry run alembic revision --autogenerate -m "auto-generated-migration-$CURRENT_TIME"
+          NEW_MIGRATION_FILE=$(find migrations/versions -type f -name "*.py" -exec grep -l "$CURRENT_TIME" {} \; | head -n 1)
+          
+          if [ -z "$NEW_MIGRATION_FILE" ]; then
+            echo "Failed to generate migration file"
+            exit 1
+          fi
 
-      - name: commit and push migration file on success
+          echo "New migration file: $NEW_MIGRATION_FILE"
+
+          if grep -q "op\." "$NEW_MIGRATION_FILE"; then
+            echo "Schema differences detected between models and the current DB schema:"
+            grep "op\." "$NEW_MIGRATION_FILE"
+            echo "schema_changed=true" > $GITHUB_OUTPUT
+          else
+            echo "No schema changes detected; removing the generated migration file."
+            rm -f "$NEW_MIGRATION_FILE"
+            echo "schema_changed=false" > $GITHUB_OUTPUT
+          fi
+
+      - name: Test migration file
         working-directory: ${{ env.ALEMBIC_PATH }}
-        if: success()
+        if: steps.generate-migration.outputs.schema_changed == 'true'
+        run: |
+          poetry run alembic upgrade head
+
+      - name: commit and push new migration file on success
+        working-directory: ${{ env.ALEMBIC_PATH }}
+        if: steps.generate-migration.outputs.schema_changed == 'true'
         run: |
           git config --global user.email "action@github.com"
           git config --global user.name "GitHub Action"
-          git add migrations/versions/*
-          git commit -m "Auto-generated migration by github action at ($(date +%Y%m%d%H%M%S)) from ci"
+          git add migrations/versions/*.py
+          git commit -m "auto-generated migration by github action at ($(date +%Y%m%d%H%M%S)) from ci"
+          git push
