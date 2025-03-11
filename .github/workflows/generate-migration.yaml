@@ -94,5 +94,5 @@ jobs:
           git config --global user.email "action@github.com"
           git config --global user.name "GitHub Action"
           git add migrations/versions/*.py
-          git commit -m "Auto-generated migration by github action at ($(date +%Y%m%d%H%M%S)) from ci"
-          git push origin HEAD:${{ github.head_ref }}
+          git commit -m "auto-generated migration by github action at ($(date +%Y%m%d%H%M%S)) from ci"
+          git push
