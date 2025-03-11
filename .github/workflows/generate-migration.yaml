@@ -41,6 +41,8 @@ jobs:
     steps:
       - name: Fetch Base Branch Latest Commit
         uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.ref }}
 
       - name: Install poetry
         run: pipx install poetry
