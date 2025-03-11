@@ -12,7 +12,7 @@ on:
   workflow_dispatch:
   pull_request:
     branches:
-      - feature/*
+      - main
     types:
       - opened
       - synchronize
