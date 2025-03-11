@@ -79,7 +79,7 @@ jobs:
 
           if grep -q "op\." "$NEW_MIGRATION_FILE"; then
             echo "Schema differences detected between models and the current DB schema:"
-            grep "op\." "$MIGRATION_FILE"
+            grep "op\." "$NEW_MIGRATION_FILE"
             echo "schema_changed=true" > $GITHUB_OUTPUT
           else
             echo "No schema changes detected; removing the generated migration file."
