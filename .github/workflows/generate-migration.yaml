@@ -34,14 +34,19 @@ jobs:
       - name: Fetch Base Branch Latest Commit
         uses: actions/checkout@v4
         with:
-          fetch-depth: 0
+          ref: $GITHUB_REF
+          fetch-depth: 1
+
+      - name: Fetch Base Branch Latest Commit
+        uses: actions/checkout@v4
 
       - name: Notice diff files
         id: skip-test
         run: |
-          BASE_SHA=${{ github.event.pull_request.base.sha }}
-          CURRENT_SHA=${{ github.sha }}
-          CHANGE_FILES=$(git diff --name-only $BASE_SHA $CURRENT_SHA)
+          MERGE_BASE_SHA=$(git rev-list -1 $GITHUB_REF)
+          echo "MERGE_BASE_SHA $MERGE_BASE_SHA"
+          echo "GITHUB_SHA: $GITHUB_SHA"
+          CHANGE_FILES=$(git diff --name-only $MERGE_BASE_SHA $GITHUB_SHA)
           echo "Changed files: $CHANGED_FILES"
 
       # - name: Install poetry
