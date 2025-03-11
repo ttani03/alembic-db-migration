@@ -14,4 +14,4 @@ class User(Base):
     is_active = Column(Boolean, default=True)
     created_at = Column(DateTime, default=datetime.now)
     # updated_at = Column(DateTime, default=datetime.now, onupdate=datetime.now)
-    # deleted_at = Column(DateTime, nullable=True)
+    deleted_at = Column(DateTime, nullable=True)
