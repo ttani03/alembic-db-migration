@@ -38,9 +38,11 @@ jobs:
 
       - name: Notice diff files
         id: skip-test
-        run: |-
-          diff=$(git diff --name-only origin/${{ github.event.pull_request.head.ref }}..${{ github.sha }})
-          echo "::notice diff: $diff"
+        run: |
+          BASE_SHA=${{ github.event.pull_request.base.sha }}
+          CURRENT_SHA=${{ github.sha }}
+          CHANGE_FILES=$(git diff --name-only $BASE_SHA $CURRENT_SHA)
+          echo "Changed files: $CHANGED_FILES"
 
       # - name: Install poetry
       #   run: pipx install poetry
