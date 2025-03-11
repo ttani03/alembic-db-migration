@@ -52,7 +52,7 @@ jobs:
       # - name: Fetch Base Branch Latest Commit
       #   uses: actions/checkout@v4
       #   with:
-      #     ref: ${{ github.head_ref }}	
+      #     ref: ${{ github.head_ref }}
       #     fetch-depth: 1
 
       # - name: Fetch Base Branch Latest Commit
